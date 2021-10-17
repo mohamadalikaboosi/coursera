@@ -3,11 +3,11 @@ const bodyParser = require('body-parser');
 
 const promoRouter = express.Router();
 // Models
-const Promotions = require('../models/Promotions');
+const Promotions = require('../models/promotions');
 
 promoRouter.use(bodyParser.json());
 
-//------------------ /promotions --------------------//
+// /promotions
 promoRouter.route('/')
     .all((req, res, next) => {
         res.statusCode = 200;
@@ -48,7 +48,7 @@ promoRouter.route('/')
             next(e);
         }
     });
-//------------------ /promotions/:promotionId--------------------//
+//  /promotions/:promotionId
 promoRouter.route('/:promoId')
     .all((req, res, next) => {
         res.statusCode = 200;
