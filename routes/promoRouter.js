@@ -2,12 +2,13 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 const promoRouter = express.Router();
+const authenticate = require('../passport/authenticate');
 // Models
 const Promotions = require('../models/promotions');
 
 promoRouter.use(bodyParser.json());
 
-// /promotions
+//------------------ /promotions --------------------//
 promoRouter.route('/')
     .all((req, res, next) => {
         res.statusCode = 200;
@@ -24,7 +25,7 @@ promoRouter.route('/')
             next(e);
         }
     })
-    .post(async (req, res, next) => {
+    .post(authenticate.verifyUser, authenticate.verifyAdmin,async (req, res, next) => {
         try {
             let promotion = await Promotions.create(req.body);
             console.log('Promotion Created ', promotion);
@@ -34,11 +35,11 @@ promoRouter.route('/')
             next(e);
         }
     })
-    .put((req, res, next) => {
+    .put(authenticate.verifyUser, authenticate.verifyAdmin,(req, res, next) => {
         res.statusCode = 403;
         res.end('PUT operation not supported on /promotions');
     })
-    .delete(async (req, res, next) => {
+    .delete(authenticate.verifyUser, authenticate.verifyAdmin,async (req, res, next) => {
         try {
             let resp = await Promotions.remove({})
             res.statusCode = 200;
@@ -48,7 +49,7 @@ promoRouter.route('/')
             next(e);
         }
     });
-//  /promotions/:promotionId
+//------------------ /promotions/:promotionId--------------------//
 promoRouter.route('/:promoId')
     .all((req, res, next) => {
         res.statusCode = 200;
@@ -65,11 +66,11 @@ promoRouter.route('/:promoId')
             next(e);
         }
     })
-    .post((req, res, next) => {
+    .post(authenticate.verifyUser, authenticate.verifyAdmin,(req, res, next) => {
         res.statusCode = 403;
         res.end('POST operation not supported on /promotions/' + req.params.promoId);
     })
-    .put(async (req, res, next) => {
+    .put(authenticate.verifyUser, authenticate.verifyAdmin,async (req, res, next) => {
         try {
             let promotion = await Promotions.findByIdAndUpdate(req.params.promoId, {
                 $set: req.body
@@ -81,7 +82,7 @@ promoRouter.route('/:promoId')
             next(e);
         }
     })
-    .delete(async (req, res, next) => {
+    .delete(authenticate.verifyUser, authenticate.verifyAdmin,async (req, res, next) => {
         try {
             let resp = await Promotions.findByIdAndRemove(req.params.promoId);
             res.statusCode = 200;

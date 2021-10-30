@@ -2,11 +2,14 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 const leaderRouter = express.Router();
+
 // Models
 const Leaders = require('../models/leaders');
+const authenticate = require("../passport/authenticate");
+
 leaderRouter.use(bodyParser.json());
 
-// /leaders
+//------------------ /leaders --------------------//
 leaderRouter.route('/')
     .all((req, res, next) => {
         res.statusCode = 200;
@@ -23,7 +26,7 @@ leaderRouter.route('/')
             next(e);
         }
     })
-    .post(async (req, res, next) => {
+    .post(authenticate.verifyUser, authenticate.verifyAdmin,async (req, res, next) => {
         try {
             let leader = await Leaders.create(req.body);
             console.log('Leader Created ', leader);
@@ -34,11 +37,11 @@ leaderRouter.route('/')
         }
 
     })
-    .put((req, res, next) => {
+    .put(authenticate.verifyUser, authenticate.verifyAdmin,(req, res, next) => {
         res.statusCode = 403;
         res.end('PUT operation not supported on /leaders');
     })
-    .delete(async (req, res, next) => {
+    .delete(authenticate.verifyUser, authenticate.verifyAdmin,async (req, res, next) => {
         try {
             let resp = await Leaders.remove({})
             res.statusCode = 200;
@@ -49,7 +52,7 @@ leaderRouter.route('/')
         }
     });
 
-///leaders/:leaderId
+//------------------ /leaders/:leaderId--------------------//
 leaderRouter.route('/:leaderId')
     .all((req, res, next) => {
         res.statusCode = 200;
@@ -62,15 +65,15 @@ leaderRouter.route('/:leaderId')
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.json(leader);
-        }catch (e) {
+        } catch (e) {
             next(e);
         }
     })
-    .post((req, res, next) => {
+    .post(authenticate.verifyUser, authenticate.verifyAdmin,(req, res, next) => {
         res.statusCode = 403;
         res.end('POST operation not supported on /leaders/' + req.params.leaderId);
     })
-    .put(async (req, res, next) => {
+    .put(authenticate.verifyUser, authenticate.verifyAdmin,async (req, res, next) => {
         try {
             let leader = await Leaders.findByIdAndUpdate(req.params.leaderId, {
                 $set: req.body
@@ -78,17 +81,17 @@ leaderRouter.route('/:leaderId')
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.json(leader);
-        }catch (e) {
+        } catch (e) {
             next(e);
         }
     })
-    .delete(async (req, res, next) => {
+    .delete(authenticate.verifyUser, authenticate.verifyAdmin,async (req, res, next) => {
         try {
             let resp = await Leaders.findByIdAndRemove(req.params.leaderId);
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.json(resp);
-        }catch (e){
+        } catch (e) {
             next(e)
         }
     })

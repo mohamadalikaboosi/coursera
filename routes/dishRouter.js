@@ -6,10 +6,11 @@ const mongoose = require('mongoose');
 const Dishes = require('../models/dishes');
 
 const dishRouter = express.Router();
+const authenticate = require('../passport/authenticate');
 
 dishRouter.use(bodyParser.json());
 
-// /dishes
+//------------------ /dishes --------------------//
 dishRouter.route('/')
     .all((req, res, next) => {
         res.statusCode = 200;
@@ -18,7 +19,7 @@ dishRouter.route('/')
     })
     .get(async (req, res, next) => {
         try {
-            let dishes = await Dishes.find({});
+            let dishes = await Dishes.find({}).populate('comments.author').exec();
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.json(dishes);
@@ -26,7 +27,7 @@ dishRouter.route('/')
             next(e)
         }
     })
-    .post(async (req, res, next) => {
+    .post(authenticate.verifyUser, authenticate.verifyAdmin, async (req, res, next) => {
         try {
             let dish = await Dishes.create(req.body);
             console.log('Dish Created ', dish);
@@ -36,11 +37,11 @@ dishRouter.route('/')
             next(e)
         }
     })
-    .put((req, res, next) => {
+    .put(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
         res.statusCode = 403;
         res.end('PUT operation not supported on /dishes');
     })
-    .delete(async (req, res, next) => {
+    .delete(authenticate.verifyUser, authenticate.verifyAdmin, async (req, res, next) => {
         try {
             let resp = await Dishes.remove({})
             res.statusCode = 200;
@@ -51,7 +52,7 @@ dishRouter.route('/')
         }
     });
 
-// /dishes/:dishId
+//------------------ /dishes/:dishId--------------------//
 dishRouter.route('/:dishId')
     .all((req, res, next) => {
         res.statusCode = 200;
@@ -59,22 +60,20 @@ dishRouter.route('/:dishId')
         next();
     })
     .get(async (req, res, next) => {
-
         try {
-            let dish = await Dishes.findById(req.params.dishId);
+            let dish = await Dishes.findById(req.params.dishId).populate('comments.author').exec();
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.json(dish);
         } catch (e) {
             next(e);
         }
-
     })
-    .post((req, res, next) => {
+    .post(authenticate.verifyUser, authenticate.verifyAdmin, (req, res, next) => {
         res.statusCode = 403;
         res.end('POST operation not supported on /dishes/' + req.params.dishId);
     })
-    .put(async (req, res, next) => {
+    .put(authenticate.verifyUser, authenticate.verifyAdmin, async (req, res, next) => {
         try {
             let dish = await Dishes.findByIdAndUpdate(req.params.dishId, {
                 $set: req.body
@@ -87,7 +86,7 @@ dishRouter.route('/:dishId')
             next(e);
         }
     })
-    .delete(async (req, res, next) => {
+    .delete(authenticate.verifyUser, authenticate.verifyAdmin, async (req, res, next) => {
         try {
             let resp = await Dishes.findByIdAndRemove(req.params.dishId);
             res.statusCode = 200;
@@ -95,7 +94,7 @@ dishRouter.route('/:dishId')
             res.json(resp);
 
         } catch (e) {
-
+            next(e);
         }
     });
 
@@ -105,7 +104,7 @@ dishRouter.route('/:dishId/comments')
     .get(async (req, res, next) => {
 
         try {
-            let dish = await Dishes.findById(req.params.dishId);
+            let dish = await Dishes.findById(req.params.dishId).populate('comments.author').exec();
 
             if (!dish) {
                 let err = new Error('Dish ' + req.params.dishId + ' not found');
@@ -121,10 +120,9 @@ dishRouter.route('/:dishId/comments')
             next(e);
         }
     })
-    .post(async (req, res, next) => {
-
+    .post(authenticate.verifyUser, async (req, res, next) => {
         try {
-            let dish = await Dishes.findById(req.params.dishId);
+            let dish = await Dishes.findById(req.params.dishId).populate('comments.author').exec();
             if (!dish) {
                 let err = new Error('Dish ' + req.params.dishId + ' not found');
                 err.status = 404;
@@ -132,7 +130,8 @@ dishRouter.route('/:dishId/comments')
             }
             let obj = {...req.body};
             dish.comments.push(obj);
-            await dish.save();
+            dish = await dish.save();
+            dish = await Dishes.findById(dish._id).populate('comments.author').exec();
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.json(dish);
@@ -141,7 +140,7 @@ dishRouter.route('/:dishId/comments')
             next(e);
         }
     })
-    .put((req, res, next) => {
+    .put(authenticate.verifyUser, (req, res, next) => {
 
         try {
             res.statusCode = 403;
@@ -152,7 +151,7 @@ dishRouter.route('/:dishId/comments')
         }
 
     })
-    .delete(async (req, res, next) => {
+    .delete(authenticate.verifyUser, authenticate.verifyAdmin, async (req, res, next) => {
         try {
             let dish = await Dishes.findById(req.params.dishId);
             if (!dish) {
@@ -176,7 +175,7 @@ dishRouter.route('/:dishId/comments')
 dishRouter.route('/:dishId/comments/:commentId')
     .get(async (req, res, next) => {
         try {
-            let dish = await Dishes.findById(req.params.dishId);
+            let dish = await Dishes.findById(req.params.dishId).populate('comments.author').exec();
             if (!dish && !dish.comments.id(req.params.commentId)) {
                 if (dish === null) {
                     let err = new Error('Dish ' + req.params.dishId + ' not found');
@@ -196,7 +195,7 @@ dishRouter.route('/:dishId/comments/:commentId')
             next(e);
         }
     })
-    .post((req, res, next) => {
+    .post(authenticate.verifyUser, (req, res, next) => {
         try {
             res.statusCode = 403;
             res.end('POST operation not supported on /dishes/' + req.params.dishId
@@ -206,9 +205,10 @@ dishRouter.route('/:dishId/comments/:commentId')
         }
 
     })
-    .put(async (req, res, next) => {
+    .put(authenticate.verifyUser, async (req, res, next) => {
         try {
             let dish = await Dishes.findById(req.params.dishId);
+
             if (!dish && !dish.comments.id(req.params.commentId)) {
                 if (dish === null) {
                     let err = new Error('Dish ' + req.params.dishId + ' not found');
@@ -221,23 +221,33 @@ dishRouter.route('/:dishId/comments/:commentId')
                 }
             }
 
-            if (req.body.rating) {
-                dish.comments.id(req.params.commentId).rating = req.body.rating;
+
+            for (const comment of dish.comments) {
+                if (comment._id.equals(req.params.commentId) && comment.author.equals(req.user._id)) {
+                    if (req.body.rating) {
+                        dish.comments.id(req.params.commentId).rating = req.body.rating;
+                    }
+                    if (req.body.comment) {
+                        dish.comments.id(req.params.commentId).comment = req.body.comment;
+                    }
+                    dish = await dish.save();
+                    dish = await Dishes.findById(dish._id).populate('comments.author').exec();
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    return res.json(dish);
+                }
             }
-            if (req.body.comment) {
-                dish.comments.id(req.params.commentId).comment = req.body.comment;
-            }
-            await dish.save();
-            res.statusCode = 200;
-            res.setHeader('Content-Type', 'application/json');
-            res.json(dish);
+            let err = {};
+            err.message = "You are not authorized to perform this operation!";
+            err.status = 403;
+            next(err);
 
         } catch (e) {
             next(e);
         }
 
     })
-    .delete(async (req, res, next) => {
+    .delete(authenticate.verifyUser, async (req, res, next) => {
         try {
             let dish = await Dishes.findById(req.params.dishId);
 
@@ -252,17 +262,28 @@ dishRouter.route('/:dishId/comments/:commentId')
                     return next(err);
                 }
             }
-            dish.comments.id(req.params.commentId).remove();
-            await dish.save();
 
-            res.statusCode = 200;
-            res.setHeader('Content-Type', 'application/json');
-            res.json(dish);
+            for (const comment of dish.comments) {
+                if (comment._id.equals(req.params.commentId) && comment.author.equals(req.user._id)) {
+                    dish.comments.id(req.params.commentId).remove();
+                    dish = await dish.save();
+                    dish = await Dishes.findById(dish._id).populate('comments.author').exec();
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    return res.json(dish);
+                }
+            }
+            let err = {};
+            err.message = "You are not authorized to perform this operation!";
+            err.status = 403;
+            next(err);
 
-        } catch (e) {
+        } catch
+            (e) {
             next(e);
         }
 
-    });
+    })
+;
 
 module.exports = dishRouter;
